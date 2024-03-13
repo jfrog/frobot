@@ -40,8 +40,8 @@ type ScanRepositoryCmd struct {
 	aggregateFixes bool
 	// The current project technology
 	projectTech []coreutils.Technology
-	// Stores all package manager handlers for detected issues
-	handlers map[coreutils.Technology]packagehandlers.PackageHandler
+	// Stores all package manager handler for detected issues
+	handler packagehandlers.PackageHandler
 }
 
 func (cfp *ScanRepositoryCmd) Run(repoAggregator utils.RepoAggregator, client vcsclient.VcsClient, frogbotRepoConnection *utils.UrlAccessChecker) (err error) {
@@ -83,6 +83,7 @@ func (cfp *ScanRepositoryCmd) scanAndFixBranch(repository *utils.Repository) (er
 	if err = cfp.scanDetails.CreateMultiScanIdForScans(); err != nil {
 		return err
 	}
+
 	for i := range repository.Projects {
 		cfp.scanDetails.Project = &repository.Projects[i]
 		cfp.projectTech = []coreutils.Technology{}
@@ -260,7 +261,7 @@ func (cfp *ScanRepositoryCmd) fixMultiplePackages(fullProjectPath string, vulner
 	return
 }
 
-// fixIssuesSinglePR fixes all the vulnerabilities in a single aggregated pull request.
+// Fixes all the vulnerabilities in a single aggregated pull request.
 // If an existing aggregated fix is present, it checks for different scan results.
 // If the scan results are the same, no action is taken.
 // Otherwise, it performs a force push to the same branch and reopens the pull request if it was closed.
@@ -297,7 +298,7 @@ func (cfp *ScanRepositoryCmd) handleUpdatePackageErrors(err error) error {
 func (cfp *ScanRepositoryCmd) fixSinglePackageAndCreatePR(vulnDetails *utils.VulnerabilityDetails) (err error) {
 	fixVersion := vulnDetails.SuggestedFixedVersion
 	log.Debug("Attempting to fix", fmt.Sprintf("%s:%s", vulnDetails.ImpactedDependencyName, vulnDetails.ImpactedDependencyVersion), "with", fixVersion)
-	fixBranchName, err := cfp.gitManager.GenerateFixBranchName(cfp.scanDetails.BaseBranch(), vulnDetails.ImpactedDependencyName, fixVersion)
+	fixBranchName, err := cfp.gitManager.GenerateFixBranchName(cfp.scanDetails.BaseBranch(), vulnDetails.ImpactedDependencyName, fixVersion, cfp.scanDetails.Project.ProjectName)
 	if err != nil {
 		return
 	}
@@ -397,7 +398,7 @@ func (cfp *ScanRepositoryCmd) preparePullRequestDetails(vulnerabilitiesDetails .
 	}
 	// In separate pull requests there is only one vulnerability
 	vulnDetails := vulnerabilitiesDetails[0]
-	pullRequestTitle := cfp.gitManager.GeneratePullRequestTitle(vulnDetails.ImpactedDependencyName, vulnDetails.SuggestedFixedVersion)
+	pullRequestTitle := cfp.gitManager.GeneratePullRequestTitle(vulnDetails.ImpactedDependencyName, vulnDetails.SuggestedFixedVersion, cfp.scanDetails.ProjectName)
 	return pullRequestTitle, prBody, nil
 }
 
@@ -490,19 +491,26 @@ func (cfp *ScanRepositoryCmd) updatePackageToFixedVersion(vulnDetails *utils.Vul
 		return
 	}
 
-	if cfp.handlers == nil {
-		cfp.handlers = make(map[coreutils.Technology]packagehandlers.PackageHandler)
-	}
+	/*
+		if cfp.handler == nil {
+			cfp.handler = make(map[coreutils.Technology]packagehandlers.PackageHandler)
+		}
 
-	handler := cfp.handlers[vulnDetails.Technology]
-	if handler == nil {
-		handler = packagehandlers.GetCompatiblePackageHandler(vulnDetails, cfp.scanDetails)
-		cfp.handlers[vulnDetails.Technology] = handler
-	} else if _, unsupported := handler.(*packagehandlers.UnsupportedPackageHandler); unsupported {
+		handler := cfp.handler[vulnDetails.Technology]
+		if handler == nil {
+			handler = packagehandlers.GetCompatiblePackageHandler(vulnDetails, cfp.scanDetails)
+			cfp.handler[vulnDetails.Technology] = handler
+		} else if _, unsupported := handler.(*packagehandlers.UnsupportedPackageHandler); unsupported {
+			return
+		}
+	*/
+	handler := packagehandlers.GetCompatiblePackageHandler(vulnDetails, cfp.scanDetails)
+	if _, unsupported := handler.(*packagehandlers.UnsupportedPackageHandler); unsupported {
 		return
 	}
+	cfp.handler = handler
 
-	return cfp.handlers[vulnDetails.Technology].UpdateDependency(vulnDetails)
+	return cfp.handler.UpdateDependency(vulnDetails)
 }
 
 // The getRemoteBranchScanHash function extracts the checksum written inside the pull request body and returns it.

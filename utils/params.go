@@ -86,6 +86,7 @@ type Project struct {
 	InstallCommandName  string
 	InstallCommandArgs  []string
 	IsRecursiveScan     bool
+	ProjectName         string `yaml:"projectName,omitempty"`
 }
 
 func (p *Project) setDefaultsIfNeeded() error {

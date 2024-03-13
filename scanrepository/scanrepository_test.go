@@ -341,19 +341,21 @@ func TestParseVersionChangeString(t *testing.T) {
 
 func TestGenerateFixBranchName(t *testing.T) {
 	tests := []struct {
-		baseBranch      string
-		impactedPackage string
-		fixVersion      string
-		expectedName    string
+		baseBranch       string
+		impactedPackage  string
+		fixVersion       string
+		expectedName     string
+		uniqueIdentifier string
 	}{
-		{"dev", "gopkg.in/yaml.v3", "3.0.0", "frogbot-gopkg.in/yaml.v3-d61bde82dc594e5ccc5a042fe224bf7c"},
-		{"master", "gopkg.in/yaml.v3", "3.0.0", "frogbot-gopkg.in/yaml.v3-41405528994061bd108e3bbd4c039a03"},
-		{"dev", "replace:colons:colons", "3.0.0", "frogbot-replace_colons_colons-89e555131b4a70a32fe9d9c44d6ff0fc"},
+		{"dev", "gopkg.in/yaml.v3", "3.0.0", "frogbot-gopkg.in/yaml.v3-d61bde82dc594e5ccc5a042fe224bf7c", ""},
+		{"master", "gopkg.in/yaml.v3", "3.0.0", "frogbot-gopkg.in/yaml.v3-41405528994061bd108e3bbd4c039a03", ""},
+		{"dev", "replace:colons:colons", "3.0.0", "frogbot-replace_colons_colons-89e555131b4a70a32fe9d9c44d6ff0fc", ""},
+		{"master", "mquery", "3.4.5", "frogbot-mquery-75fc8c6d4e3368833be20a46fe5b5cb0", "my-identifier"},
 	}
 	gitManager := utils.GitManager{}
 	for _, test := range tests {
 		t.Run(test.expectedName, func(t *testing.T) {
-			branchName, err := gitManager.GenerateFixBranchName(test.baseBranch, test.impactedPackage, test.fixVersion)
+			branchName, err := gitManager.GenerateFixBranchName(test.baseBranch, test.impactedPackage, test.fixVersion, test.uniqueIdentifier)
 			assert.NoError(t, err)
 			assert.Equal(t, test.expectedName, branchName)
 		})
@@ -596,7 +598,11 @@ random body
 }
 
 func TestPreparePullRequestDetails(t *testing.T) {
-	cfp := ScanRepositoryCmd{OutputWriter: &outputwriter.StandardOutput{}, gitManager: &utils.GitManager{}}
+	cfp := ScanRepositoryCmd{
+		OutputWriter: &outputwriter.StandardOutput{},
+		gitManager:   &utils.GitManager{}, scanDetails: &utils.ScanDetails{
+			Project: &utils.Project{ProjectName: ""},
+		}}
 	cfp.OutputWriter.SetJasOutputFlags(true, false)
 	vulnerabilities := []*utils.VulnerabilityDetails{
 		{
@@ -618,6 +624,14 @@ func TestPreparePullRequestDetails(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "[🐸 Frogbot] Update version of package1 to 1.0.0", prTitle)
 	assert.Equal(t, expectedPrBody, prBody)
+
+	cfp.scanDetails.ProjectName = "my-unique-identifier"
+	expectedPrBody = utils.GenerateFixPullRequestDetails(utils.ExtractVulnerabilitiesDetailsToRows(vulnerabilities), cfp.OutputWriter)
+	prTitle, prBody, err = cfp.preparePullRequestDetails(vulnerabilities...)
+	assert.NoError(t, err)
+	assert.Equal(t, "[🐸 Frogbot] Update version of package1 to 1.0.0 (my-unique-identifier)", prTitle)
+	assert.Equal(t, expectedPrBody, prBody)
+
 	vulnerabilities = append(vulnerabilities, &utils.VulnerabilityDetails{
 		VulnerabilityOrViolationRow: formats.VulnerabilityOrViolationRow{
 			Summary: "summary",
@@ -637,6 +651,7 @@ func TestPreparePullRequestDetails(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, cfp.gitManager.GenerateAggregatedPullRequestTitle([]coreutils.Technology{}), prTitle)
 	assert.Equal(t, expectedPrBody, prBody)
+
 	cfp.OutputWriter = &outputwriter.SimplifiedOutput{}
 	expectedPrBody = utils.GenerateFixPullRequestDetails(utils.ExtractVulnerabilitiesDetailsToRows(vulnerabilities), cfp.OutputWriter) + outputwriter.MarkdownComment("Checksum: bec823edaceb5d0478b789798e819bde")
 	prTitle, prBody, err = cfp.preparePullRequestDetails(vulnerabilities...)
