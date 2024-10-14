@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/jfrog/frogbot/v2/utils"
@@ -28,7 +29,7 @@ type ScanPullRequestCmd struct{}
 
 // Run ScanPullRequest method only works for a single repository scan.
 // Therefore, the first repository config represents the repository on which Frogbot runs, and it is the only one that matters.
-func (cmd *ScanPullRequestCmd) Run(configAggregator utils.RepoAggregator, client vcsclient.VcsClient, frogbotRepoConnection *utils.UrlAccessChecker) (err error) {
+func (cmd *ScanPullRequestCmd) Run(configAggregator utils.RepoAggregator, client vcsclient.VcsClient, frogbotRepoConnection *utils.UrlAccessChecker, sarifPath string) (err error) {
 	if err = utils.ValidateSingleRepoConfiguration(&configAggregator); err != nil {
 		return
 	}
@@ -42,7 +43,7 @@ func (cmd *ScanPullRequestCmd) Run(configAggregator utils.RepoAggregator, client
 	if repoConfig.PullRequestDetails, err = client.GetPullRequestByID(context.Background(), repoConfig.RepoOwner, repoConfig.RepoName, int(repoConfig.PullRequestDetails.ID)); err != nil {
 		return
 	}
-	return scanPullRequest(repoConfig, client)
+	return scanPullRequest(repoConfig, client, sarifPath)
 }
 
 // Verify that the 'frogbot' GitHub environment was properly configured on the repository
@@ -81,7 +82,7 @@ func verifyGitHubFrogbotEnvironment(client vcsclient.VcsClient, repoConfig *util
 // a. Audit the dependencies of the source and the target branches.
 // b. Compare the vulnerabilities found in source and target branches, and show only the new vulnerabilities added by the pull request.
 // Otherwise, only the source branch is scanned and all found vulnerabilities are being displayed.
-func scanPullRequest(repo *utils.Repository, client vcsclient.VcsClient) (err error) {
+func scanPullRequest(repo *utils.Repository, client vcsclient.VcsClient, sarifPath string) (err error) {
 	pullRequestDetails := repo.PullRequestDetails
 	log.Info(fmt.Sprintf("Scanning Pull Request #%d (from source branch: <%s/%s/%s> to target branch: <%s/%s/%s>)",
 		pullRequestDetails.ID,
@@ -95,7 +96,7 @@ func scanPullRequest(repo *utils.Repository, client vcsclient.VcsClient) (err er
 	}()
 
 	// Audit PR code
-	issues, err := auditPullRequest(repo, client, analyticsService)
+	issues, err := auditPullRequest(repo, client, analyticsService, sarifPath)
 	if err != nil {
 		return
 	}
@@ -128,7 +129,7 @@ func toFailTaskStatus(repo *utils.Repository, issues *utils.IssuesCollection) bo
 }
 
 // Downloads Pull Requests branches code and audits them
-func auditPullRequest(repoConfig *utils.Repository, client vcsclient.VcsClient, analyticsService *xsc.AnalyticsMetricsService) (issuesCollection *utils.IssuesCollection, err error) {
+func auditPullRequest(repoConfig *utils.Repository, client vcsclient.VcsClient, analyticsService *xsc.AnalyticsMetricsService, sarifPath string) (issuesCollection *utils.IssuesCollection, err error) {
 	scanDetails := utils.NewScanDetails(client, &repoConfig.Server, &repoConfig.Git).
 		SetXrayGraphScanParams(repoConfig.Watches, repoConfig.JFrogProjectKey, len(repoConfig.AllowedLicenses) > 0).
 		SetFixableOnly(repoConfig.FixableOnly).
@@ -149,7 +150,7 @@ func auditPullRequest(repoConfig *utils.Repository, client vcsclient.VcsClient, 
 	for i := range repoConfig.Projects {
 		scanDetails.SetProject(&repoConfig.Projects[i])
 		var projectIssues *utils.IssuesCollection
-		if projectIssues, err = auditPullRequestInProject(repoConfig, scanDetails); err != nil {
+		if projectIssues, err = auditPullRequestInProject(repoConfig, scanDetails, sarifPath); err != nil {
 			return
 		}
 		issuesCollection.Append(projectIssues)
@@ -160,7 +161,29 @@ func auditPullRequest(repoConfig *utils.Repository, client vcsclient.VcsClient, 
 	return
 }
 
-func auditPullRequestInProject(repoConfig *utils.Repository, scanDetails *utils.ScanDetails) (auditIssues *utils.IssuesCollection, err error) {
+// Generate and write SARIF report to sarifPath
+func generateAndWriteSarifReport(sourceResults *securityutils.Results, repoConfig *utils.Repository, sarifPath string) error {
+	// Generate SARIF report
+	log.Info("Generating SARIF report...")
+	sarifReportStr, err := utils.GenerateFrogbotSarifReport(sourceResults, sourceResults.IsMultipleProject(), repoConfig.AllowedLicenses)
+	if err != nil {
+		log.Error("Error generating SARIF report: ", err)
+		return err
+	}
+
+	// Write the SARIF report to a file
+	log.Info("Writing SARIF report to file: ", sarifPath)
+	err = ioutil.WriteFile(sarifPath, []byte(sarifReportStr), 0644)
+	if err != nil {
+		log.Error("Error writing SARIF report to file: ", err)
+		return err
+	}
+
+	log.Info("SARIF report successfully written to file: ", sarifPath)
+	return nil
+}
+
+func auditPullRequestInProject(repoConfig *utils.Repository, scanDetails *utils.ScanDetails, sarifPath string) (auditIssues *utils.IssuesCollection, err error) {
 	// Download source branch
 	sourcePullRequestInfo := scanDetails.PullRequestDetails.Source
 	sourceBranchWd, cleanupSource, err := utils.DownloadRepoToTempDir(scanDetails.Client(), sourcePullRequestInfo.Owner, sourcePullRequestInfo.Repository, sourcePullRequestInfo.Name)
@@ -178,6 +201,13 @@ func auditPullRequestInProject(repoConfig *utils.Repository, scanDetails *utils.
 	sourceResults, err = scanDetails.RunInstallAndAudit(workingDirs...)
 	if err != nil {
 		return
+	}
+
+	// If sarifPath is provided, generate and write SARIF report
+	if sarifPath != "" {
+		if err = generateAndWriteSarifReport(sourceResults, repoConfig, sarifPath); err != nil {
+			return
+		}
 	}
 
 	// Set JAS output flags

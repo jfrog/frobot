@@ -604,6 +604,13 @@ func testScanPullRequest(t *testing.T, configPath, projectName string, failOnSec
 	testDir, cleanUp := utils.CopyTestdataProjectsToTemp(t, "scanpullrequest")
 	defer cleanUp()
 
+	// Create a temporary file for SARIF output
+	tmpFile, err := os.CreateTemp("", "sarifOutputPath-*.sarif")
+	assert.NoError(t, err, "Temporary file for SARIF path should be created successfully")
+	defer os.Remove(tmpFile.Name()) // Clean up the file at the end of the test
+	// Use the temporary file's path as sarifPath
+	sarifPath := tmpFile.Name()
+
 	// Renames test git folder to .git
 	currentDir := filepath.Join(testDir, projectName)
 	restoreDir, err := utils.Chdir(currentDir)
@@ -615,12 +622,14 @@ func testScanPullRequest(t *testing.T, configPath, projectName string, failOnSec
 
 	// Run "frogbot scan pull request"
 	var scanPullRequest ScanPullRequestCmd
-	err = scanPullRequest.Run(configAggregator, client, utils.MockHasConnection())
+	err = scanPullRequest.Run(configAggregator, client, utils.MockHasConnection(), sarifPath)
 	if failOnSecurityIssues {
 		assert.EqualErrorf(t, err, SecurityIssueFoundErr, "Error should be: %v, got: %v", SecurityIssueFoundErr, err)
 	} else {
 		assert.NoError(t, err)
 	}
+	_, err = os.Stat(sarifPath)
+	assert.NoError(t, err, "SARIF file should exist at the specified path")
 
 	// Check env sanitize
 	err = utils.SanitizeEnv()

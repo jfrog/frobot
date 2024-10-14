@@ -49,30 +49,30 @@ type ScanRepositoryCmd struct {
 	analyticsService *xsc.AnalyticsMetricsService
 }
 
-func (cfp *ScanRepositoryCmd) Run(repoAggregator utils.RepoAggregator, client vcsclient.VcsClient, frogbotRepoConnection *utils.UrlAccessChecker) (err error) {
+func (cfp *ScanRepositoryCmd) Run(repoAggregator utils.RepoAggregator, client vcsclient.VcsClient, frogbotRepoConnection *utils.UrlAccessChecker, sarifPath string) (err error) {
 	if err = utils.ValidateSingleRepoConfiguration(&repoAggregator); err != nil {
 		return err
 	}
 	repository := repoAggregator[0]
 	repository.OutputWriter.SetHasInternetConnection(frogbotRepoConnection.IsConnected())
-	return cfp.scanAndFixRepository(&repository, client)
+	return cfp.scanAndFixRepository(&repository, client, sarifPath)
 }
 
-func (cfp *ScanRepositoryCmd) scanAndFixRepository(repository *utils.Repository, client vcsclient.VcsClient) (err error) {
+func (cfp *ScanRepositoryCmd) scanAndFixRepository(repository *utils.Repository, client vcsclient.VcsClient, sarifPath string) (err error) {
 	if err = cfp.setCommandPrerequisites(repository, client); err != nil {
 		return
 	}
 	for _, branch := range repository.Branches {
 		cfp.scanDetails.SetBaseBranch(branch)
 		cfp.scanDetails.SetXscGitInfoContext(branch, repository.Project, client)
-		if err = cfp.scanAndFixBranch(repository); err != nil {
+		if err = cfp.scanAndFixBranch(repository, sarifPath); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (cfp *ScanRepositoryCmd) scanAndFixBranch(repository *utils.Repository) (err error) {
+func (cfp *ScanRepositoryCmd) scanAndFixBranch(repository *utils.Repository, sarifPath string) (err error) {
 	cfp.analyticsService = utils.AddAnalyticsGeneralEvent(cfp.scanDetails.XscGitInfoContext, cfp.scanDetails.ServerDetails, analyticsScanRepositoryScanType)
 	defer func() {
 		cfp.analyticsService.UpdateAndSendXscAnalyticsGeneralEventFinalize(err)
@@ -104,7 +104,7 @@ func (cfp *ScanRepositoryCmd) scanAndFixBranch(repository *utils.Repository) (er
 	for i := range repository.Projects {
 		cfp.scanDetails.Project = &repository.Projects[i]
 		cfp.projectTech = []techutils.Technology{}
-		if err = cfp.scanAndFixProject(repository); err != nil {
+		if err = cfp.scanAndFixProject(repository, sarifPath); err != nil {
 			return
 		}
 	}
@@ -145,11 +145,12 @@ func (cfp *ScanRepositoryCmd) setCommandPrerequisites(repository *utils.Reposito
 	return
 }
 
-func (cfp *ScanRepositoryCmd) scanAndFixProject(repository *utils.Repository) error {
+func (cfp *ScanRepositoryCmd) scanAndFixProject(repository *utils.Repository, sarifPath string) error {
 	var fixNeeded bool
 	// A map that contains the full project paths as a keys
 	// The value is a map of vulnerable package names -> the scanDetails of the vulnerable packages.
 	// That means we have a map of all the vulnerabilities that were found in a specific folder, along with their full scanDetails.
+	log.Info("sarifPath is %s", sarifPath)
 	vulnerabilitiesByPathMap := make(map[string]map[string]*utils.VulnerabilityDetails)
 	projectFullPathWorkingDirs := utils.GetFullPathWorkingDirs(cfp.scanDetails.Project.WorkingDirs, cfp.baseWd)
 	for _, fullPathWd := range projectFullPathWorkingDirs {
@@ -168,6 +169,11 @@ func (cfp *ScanRepositoryCmd) scanAndFixProject(repository *utils.Repository) er
 			// Uploads Sarif results to GitHub in order to view the scan in the code scanning UI
 			// Currently available on GitHub only and JFrog Advance Security package
 			if err = utils.UploadSarifResultsToGithubSecurityTab(scanResults, repository, cfp.scanDetails.BaseBranch(), cfp.scanDetails.Client()); err != nil {
+				log.Warn(err)
+			}
+		} else if sarifPath != "" {
+			// Uploads SARIF result to gitlab Dashborad
+			if err = utils.UploadSarifResults(scanResults, repository, cfp.scanDetails.BaseBranch(), cfp.scanDetails.Client(), sarifPath); err != nil {
 				log.Warn(err)
 			}
 		}

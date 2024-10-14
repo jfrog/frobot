@@ -3,6 +3,11 @@ package scanpullrequest
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/frogbot/v2/testdata"
@@ -11,9 +16,6 @@ import (
 	"github.com/jfrog/froggit-go/vcsclient"
 	"github.com/jfrog/froggit-go/vcsutils"
 	"github.com/stretchr/testify/assert"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 var (
@@ -104,6 +106,13 @@ func TestScanAllPullRequestsMultiRepo(t *testing.T) {
 	_, restoreJfrogHomeFunc := utils.CreateTempJfrogHomeWithCallback(t)
 	defer restoreJfrogHomeFunc()
 
+	// Create a temporary file for SARIF output
+	tmpFile, err := os.CreateTemp("", "sarifOutputPath-*.sarif")
+	assert.NoError(t, err, "Temporary file for SARIF path should be created successfully")
+	defer os.Remove(tmpFile.Name()) // Clean up the file at the end of the test
+	// Use the temporary file's path as sarifPath
+	sarifPath := tmpFile.Name()
+
 	failOnSecurityIssues := false
 	firstRepoParams := utils.Params{
 		Scan: utils.Scan{
@@ -143,7 +152,7 @@ func TestScanAllPullRequestsMultiRepo(t *testing.T) {
 	var frogbotMessages []string
 	client := getMockClient(t, &frogbotMessages, mockParams...)
 	scanAllPullRequestsCmd := &ScanAllPullRequestsCmd{}
-	err := scanAllPullRequestsCmd.Run(configAggregator, client, utils.MockHasConnection())
+	err = scanAllPullRequestsCmd.Run(configAggregator, client, utils.MockHasConnection(), sarifPath)
 	if assert.NoError(t, err) {
 		assert.Len(t, frogbotMessages, 4)
 		expectedMessage := outputwriter.GetOutputFromFile(t, filepath.Join(allPrIntegrationPath, "test_proj_with_vulnerability_standard.md"))
@@ -154,6 +163,8 @@ func TestScanAllPullRequestsMultiRepo(t *testing.T) {
 		assert.Equal(t, expectedMessage, frogbotMessages[2])
 		expectedMessage = outputwriter.GetPRSummaryContentNoIssues(t, outputwriter.TestSummaryCommentDir, true, false)
 		assert.Equal(t, expectedMessage, frogbotMessages[3])
+		_, err = os.Stat(sarifPath)
+		assert.NoError(t, err, "SARIF file should exist at the specified path")
 	}
 }
 
@@ -163,6 +174,14 @@ func TestScanAllPullRequests(t *testing.T) {
 	defer restoreEnv()
 	falseVal := false
 	gitParams.Git.GitProvider = vcsutils.BitbucketServer
+
+	// Create a temporary file for SARIF output
+	tmpFile, err := os.CreateTemp("", "sarifOutputPath-*.sarif")
+	assert.NoError(t, err, "Temporary file for SARIF path should be created successfully")
+	defer os.Remove(tmpFile.Name()) // Clean up the file at the end of the test
+	// Use the temporary file's path as sarifPath
+	sarifPath := tmpFile.Name()
+
 	params := utils.Params{
 		Scan: utils.Scan{
 			FailOnSecurityIssues: &falseVal,
@@ -185,13 +204,15 @@ func TestScanAllPullRequests(t *testing.T) {
 	var frogbotMessages []string
 	client := getMockClient(t, &frogbotMessages, MockParams{repoParams.RepoName, repoParams.RepoOwner, "test-proj-with-vulnerability", "test-proj"})
 	scanAllPullRequestsCmd := &ScanAllPullRequestsCmd{}
-	err := scanAllPullRequestsCmd.Run(paramsAggregator, client, utils.MockHasConnection())
+	err = scanAllPullRequestsCmd.Run(paramsAggregator, client, utils.MockHasConnection(), sarifPath)
 	assert.NoError(t, err)
 	assert.Len(t, frogbotMessages, 2)
 	expectedMessage := outputwriter.GetOutputFromFile(t, filepath.Join(allPrIntegrationPath, "test_proj_with_vulnerability_simplified.md"))
 	assert.Equal(t, expectedMessage, frogbotMessages[0])
 	expectedMessage = outputwriter.GetPRSummaryContentNoIssues(t, outputwriter.TestSummaryCommentDir, true, true)
 	assert.Equal(t, expectedMessage, frogbotMessages[1])
+	_, err = os.Stat(sarifPath)
+	assert.NoError(t, err, "SARIF file should exist at the specified path")
 }
 
 func getMockClient(t *testing.T, frogbotMessages *[]string, mockParams ...MockParams) *testdata.MockVcsClient {

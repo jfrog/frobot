@@ -194,13 +194,20 @@ func TestScanRepositoryCmd_Run(t *testing.T) {
 				// Manual set of "JF_GIT_BASE_BRANCH"
 				gitTestParams.Branches = []string{"master"}
 			}
+			// Create a temporary file for SARIF output in this test case
+			tmpFile, err := os.CreateTemp("", "sarifOutputPath-*.sarif")
+			assert.NoError(t, err, "Temporary file for SARIF path should be created successfully")
+			defer os.Remove(tmpFile.Name()) // Clean up the file at the end of the test
+
+			// Use the temporary file's path as sarifPath
+			sarifPath := tmpFile.Name()
 
 			utils.CreateDotGitWithCommit(t, testDir, port, test.testName)
 			configAggregator, err := utils.BuildRepoAggregator(client, configData, &gitTestParams, &serverParams, utils.ScanRepository)
 			assert.NoError(t, err)
 			// Run
 			var cmd = ScanRepositoryCmd{dryRun: true, dryRunRepoPath: testDir}
-			err = cmd.Run(configAggregator, client, utils.MockHasConnection())
+			err = cmd.Run(configAggregator, client, utils.MockHasConnection(), sarifPath)
 			defer func() {
 				assert.NoError(t, os.Chdir(baseDir))
 			}()
@@ -309,6 +316,13 @@ pr body
 					APIEndpoint: server.URL,
 				}, RepoName: test.testName,
 			}
+			// Create a temporary file for SARIF output in this test case
+			tmpFile, err := os.CreateTemp("", "sarifOutputPath-*.sarif")
+			assert.NoError(t, err, "Temporary file for SARIF path should be created successfully")
+			defer os.Remove(tmpFile.Name()) // Clean up the file at the end of the test
+
+			// Use the temporary file's path as sarifPath
+			sarifPath := tmpFile.Name()
 
 			utils.CreateDotGitWithCommit(t, testDir, port, test.testName)
 			client, err := vcsclient.NewClientBuilder(vcsutils.GitHub).ApiEndpoint(server.URL).Token("123456").Build()
@@ -320,7 +334,7 @@ pr body
 			assert.NoError(t, err)
 			// Run
 			var cmd = ScanRepositoryCmd{dryRun: true, dryRunRepoPath: testDir}
-			err = cmd.Run(configAggregator, client, utils.MockHasConnection())
+			err = cmd.Run(configAggregator, client, utils.MockHasConnection(), sarifPath)
 			defer func() {
 				assert.NoError(t, os.Chdir(baseDir))
 			}()

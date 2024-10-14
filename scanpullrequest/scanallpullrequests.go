@@ -17,12 +17,12 @@ var errPullRequestScan = "pull request #%d scan in the '%s' repository returned 
 type ScanAllPullRequestsCmd struct {
 }
 
-func (cmd ScanAllPullRequestsCmd) Run(configAggregator utils.RepoAggregator, client vcsclient.VcsClient, frogbotRepoConnection *utils.UrlAccessChecker) error {
+func (cmd ScanAllPullRequestsCmd) Run(configAggregator utils.RepoAggregator, client vcsclient.VcsClient, frogbotRepoConnection *utils.UrlAccessChecker, sarifPath string) error {
 	for _, config := range configAggregator {
 		log.Info("Scanning all open pull requests for repository:", config.RepoName)
 		log.Info("-----------------------------------------------------------")
 		config.OutputWriter.SetHasInternetConnection(frogbotRepoConnection.IsConnected())
-		err := scanAllPullRequests(config, client)
+		err := scanAllPullRequests(config, client, sarifPath)
 		if err != nil {
 			return err
 		}
@@ -35,7 +35,7 @@ func (cmd ScanAllPullRequestsCmd) Run(configAggregator utils.RepoAggregator, cli
 // b. Find the ones that should be scanned (new PRs or PRs with a 're-scan' comment)
 // c. Audit the dependencies of the source and the target branches.
 // d. Compare the vulnerabilities found in source and target branches, and show only the new vulnerabilities added by the pull request.
-func scanAllPullRequests(repo utils.Repository, client vcsclient.VcsClient) (err error) {
+func scanAllPullRequests(repo utils.Repository, client vcsclient.VcsClient, sarifPath string) (err error) {
 	openPullRequests, err := client.ListOpenPullRequests(context.Background(), repo.RepoOwner, repo.RepoName)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func scanAllPullRequests(repo utils.Repository, client vcsclient.VcsClient) (err
 			continue
 		}
 		repo.PullRequestDetails = pr
-		if e = scanPullRequest(&repo, client); e != nil {
+		if e = scanPullRequest(&repo, client, sarifPath); e != nil {
 			// If error, write it in errList and continue to the next PR.
 			err = errors.Join(err, fmt.Errorf(errPullRequestScan, int(pr.ID), repo.RepoName, e.Error()))
 		}

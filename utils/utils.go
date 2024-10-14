@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -231,6 +232,82 @@ func UploadSarifResultsToGithubSecurityTab(scanResults *xrayutils.Results, repo 
 	}
 	log.Info("The complete scanning results have been uploaded to your Code Scanning alerts view")
 	return nil
+}
+
+func UploadSarifResults(scanResults *xrayutils.Results, repo *Repository, branch string, client vcsclient.VcsClient, sarifPath string) error {
+
+	// Generate SARIF report
+	sarifReport, err := xrayutils.GenereateSarifReportFromResults(scanResults, scanResults.IsMultipleProject(), false, repo.AllowedLicenses)
+	if err != nil {
+		return fmt.Errorf("failed to generate SARIF report: %w", err)
+	}
+
+	// Serialize the SARIF report to JSON
+	reportBytes, err := json.MarshalIndent(sarifReport, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal SARIF report to JSON: %w", err)
+	}
+
+	//// Open or create the SARIF output file
+	file, err := os.Create(sarifPath)
+	if err != nil {
+		return fmt.Errorf("failed to create SARIF file at %s: %w", sarifPath, err)
+	}
+	defer file.Close() // Ensure the file is closed even if an error occurs
+
+	// Write the SARIF report to the file
+	_, err = file.Write(reportBytes)
+
+	if err != nil {
+		return fmt.Errorf("failed to write SARIF file: %w", err)
+	}
+
+	log.Info("SARIF report has been written to %s", sarifPath)
+
+	return nil
+}
+
+func prepareRunsForGithubReport(runs []*sarif.Run) []*sarif.Run {
+	for _, run := range runs {
+		for _, rule := range run.Tool.Driver.Rules {
+			// Github security tab can display markdown content on Help attribute and not description
+			if rule.Help == nil && rule.FullDescription != nil {
+				rule.Help = rule.FullDescription
+			}
+		}
+		// Github security tab can't accept results without locations, remove them
+		results := []*sarif.Result{}
+		for _, result := range run.Results {
+			if len(result.Locations) == 0 {
+				continue
+			}
+			results = append(results, result)
+		}
+		run.Results = results
+	}
+	convertToRelativePath(runs)
+	// If we upload to Github security tab multiple runs, it will only display the last run as active issues.
+	// Combine all runs into one run with multiple invocations, so the Github security tab will display all the results as not resolved.
+	combined := sarif.NewRunWithInformationURI(sarifToolName, outputwriter.FrogbotRepoUrl)
+	sarifutils.AggregateMultipleRunsIntoSingle(runs, combined)
+	return []*sarif.Run{combined}
+}
+
+func convertToRelativePath(runs []*sarif.Run) {
+	for _, run := range runs {
+		for _, result := range run.Results {
+			for _, location := range result.Locations {
+				sarifutils.SetLocationFileName(location, sarifutils.GetRelativeLocationFileName(location, run.Invocations))
+			}
+			for _, flows := range result.CodeFlows {
+				for _, flow := range flows.ThreadFlows {
+					for _, location := range flow.Locations {
+						sarifutils.SetLocationFileName(location.Location, sarifutils.GetRelativeLocationFileName(location.Location, run.Invocations))
+					}
+				}
+			}
+		}
+	}
 }
 
 func GenerateFrogbotSarifReport(extendedResults *xrayutils.Results, isMultipleRoots bool, allowedLicenses []string) (string, error) {

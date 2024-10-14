@@ -21,7 +21,7 @@ import (
 
 type FrogbotCommand interface {
 	// Run the command
-	Run(config utils.RepoAggregator, client vcsclient.VcsClient, frogbotRepoConnection *utils.UrlAccessChecker) error
+	Run(config utils.RepoAggregator, client vcsclient.VcsClient, frogbotRepoConnection *utils.UrlAccessChecker, sarifPath string) error
 }
 
 func GetCommands() []*clitool.Command {
@@ -100,7 +100,7 @@ func Exec(command FrogbotCommand, commandName string) (err error) {
 
 	// Invoke the command interface
 	log.Info(fmt.Sprintf("Running Frogbot %q command", commandName))
-	err = command.Run(frogbotDetails.Repositories, frogbotDetails.GitClient, frogbotRepoConnection)
+	err = command.Run(frogbotDetails.Repositories, frogbotDetails.GitClient, frogbotRepoConnection, frogbotDetails.SarifPath)
 
 	// Wait for usage reporting to finish.
 	waitForUsageResponse()
