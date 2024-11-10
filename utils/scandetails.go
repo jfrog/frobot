@@ -148,10 +148,6 @@ func (sc *ScanDetails) CreateCommonGraphScanParams() *scangraph.CommonGraphScanP
 	}
 	commonParams.IncludeVulnerabilities = sc.IncludeVulnerabilities
 	commonParams.IncludeLicenses = sc.IncludeLicenses
-	commonParams.MultiScanId = sc.MultiScanId
-	if commonParams.MultiScanId != "" {
-		commonParams.XscVersion = sc.XscVersion
-	}
 	return commonParams
 }
 
@@ -193,6 +189,7 @@ func (sc *ScanDetails) RunInstallAndAudit(workDirs ...string) (auditResults *res
 		SetUseJas(!sc.DisableJas())
 
 	auditParams := audit.NewAuditParams().
+		SetMsi(sc.MultiScanId).
 		SetWorkingDirs(workDirs).
 		SetMinSeverityFilter(sc.MinSeverityFilter()).
 		SetFixableOnly(sc.FixableOnly()).
@@ -228,15 +225,15 @@ func (sc *ScanDetails) createGitInfoContext(scannedBranch, gitProject string, cl
 	}
 	gitInfo = &services.XscGitInfoContext{
 		// Use Clone URLs as Repo Url, on browsers it will redirect to repository URLS.
-		GitRepoUrl:    sc.Git.RepositoryCloneUrl,
-		GitRepoName:   sc.RepoName,
-		GitProvider:   sc.GitProvider.String(),
-		GitProject:    gitProject,
-		BranchName:    scannedBranch,
-		LastCommit:    latestCommit.Url,
-		CommitHash:    latestCommit.Hash,
-		CommitMessage: latestCommit.Message,
-		CommitAuthor:  latestCommit.AuthorName,
+		GitRepoUrl:        sc.Git.RepositoryCloneUrl,
+		GitRepoName:       sc.RepoName,
+		GitProvider:       sc.GitProvider.String(),
+		GitProject:        gitProject,
+		BranchName:        scannedBranch,
+		LastCommitUrl:     latestCommit.Url,
+		LastCommitHash:    latestCommit.Hash,
+		LastCommitMessage: latestCommit.Message,
+		LastCommitAuthor:  latestCommit.AuthorName,
 	}
 	return
 }

@@ -17,8 +17,7 @@ func AddAnalyticsGeneralEvent(gitInfoContext *services.XscGitInfoContext, server
 	if !analyticsService.ShouldReportEvents() {
 		return analyticsService
 	}
-	analyticsService.AddGeneralEvent(createAnalyticsGeneralEvent(analyticsService, gitInfoContext, scanType))
-	if analyticsService.GetMsi() != "" {
+	if analyticsService.AddGeneralEvent(createAnalyticsGeneralEvent(analyticsService, gitInfoContext, scanType)) != "" {
 		analyticsService.SetFinalizeEvent(&xscservices.XscAnalyticsGeneralEventFinalize{MultiScanId: analyticsService.GetMsi()})
 	} else {
 		analyticsService.SetShouldReportEvents(false)

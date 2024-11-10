@@ -12,16 +12,16 @@ import (
 
 func TestCreateAnalyticsGeneralEvent(t *testing.T) {
 	gitInfoContext := &services.XscGitInfoContext{
-		GitRepoUrl:    "http://localhost:8080/my-user/my-project.git",
-		GitRepoName:   "my-project",
-		GitProject:    "my-user",
-		GitProvider:   "GitHub",
-		Technologies:  nil,
-		BranchName:    "main",
-		LastCommit:    "https://api.github.com/repos/my-user/my-project/commits/a23ba44a0d379dida668nmb72003a82e4e11d0ba",
-		CommitHash:    "a23ba44a0d379dida668nmb72003a82e4e11d0ba",
-		CommitMessage: ".",
-		CommitAuthor:  "User",
+		GitRepoUrl:        "http://localhost:8080/my-user/my-project.git",
+		GitRepoName:       "my-project",
+		GitProject:        "my-user",
+		GitProvider:       "GitHub",
+		Technologies:      nil,
+		BranchName:        "main",
+		LastCommitUrl:     "https://api.github.com/repos/my-user/my-project/commits/a23ba44a0d379dida668nmb72003a82e4e11d0ba",
+		LastCommitHash:    "a23ba44a0d379dida668nmb72003a82e4e11d0ba",
+		LastCommitMessage: ".",
+		LastCommitAuthor:  "User",
 	}
 
 	serverDetails := &config.ServerDetails{
