@@ -6,7 +6,7 @@
     "main": "lib/main.js",
     "engines": {
         "npm": ">=7.0.0",
-        "node": ">=16.0.0"
+        "node": ">=20.0.0"
     },
     "scripts": {
         "prepublishOnly": "npm prune --production && npm run compile",

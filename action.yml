@@ -13,7 +13,7 @@ inputs:
     description: "By default, this is the URL of the GitHub repository owner, such as the organization that owns the repository."
     required: false
 runs:
-  using: "node16"
+  using: "node20"
   main: "action/lib/main.js"
 branding:
   icon: "terminal"
