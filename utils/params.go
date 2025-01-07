@@ -98,15 +98,14 @@ type Project struct {
 
 func (p *Project) setDefaultsIfNeeded() error {
 	if len(p.WorkingDirs) == 0 {
-		workingDir := getTrimmedEnv(WorkingDirectoryEnv)
-		if workingDir == "" {
-
+		workingDirs, _ := readArrayParamFromEnv(WorkingDirectoryEnv, WatchesDelimiter)
+		if len(workingDirs) == 0 {
 			// If no working directories are provided, and none exist in the environment variable, we designate the project's root directory as our sole working directory.
 			// We then execute a recursive scan across the entire project, commencing from the root.
-			workingDir = RootDir
+			workingDirs = []string{RootDir}
 			p.IsRecursiveScan = true
 		}
-		p.WorkingDirs = append(p.WorkingDirs, workingDir)
+		p.WorkingDirs = append(p.WorkingDirs, workingDirs...)
 	}
 	if len(p.PathExclusions) == 0 {
 		if p.PathExclusions, _ = readArrayParamFromEnv(PathExclusionsEnv, ";"); len(p.PathExclusions) == 0 {
