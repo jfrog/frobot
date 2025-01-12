@@ -154,7 +154,7 @@ func auditPullRequest(repoConfig *utils.Repository, client vcsclient.VcsClient) 
 
 	defer func() {
 		if issuesCollection != nil {
-			xsc.SendScanEndedEvent(scanDetails.XrayVersion, scanDetails.XscVersion, scanDetails.ServerDetails, scanDetails.MultiScanId, scanDetails.StartTime, issuesCollection.GetAllIssuesCount(true), err)
+			xsc.SendScanEndedEvent(scanDetails.XrayVersion, scanDetails.XscVersion, scanDetails.ServerDetails, scanDetails.MultiScanId, scanDetails.StartTime, issuesCollection.GetAllIssuesCount(true), &scanDetails.ResultContext, err)
 		}
 	}()
 

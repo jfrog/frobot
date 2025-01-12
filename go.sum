@@ -55,6 +55,10 @@ github.com/elazarl/goproxy v0.0.0-20230808193330-2592e75ae04a h1:mATvB/9r/3gvcej
 github.com/elazarl/goproxy v0.0.0-20230808193330-2592e75ae04a/go.mod h1:Ro8st/ElPeALwNFlcTpWmkr6IoMFfkjXAvTHpevnDsM=
 github.com/emirpasic/gods v1.18.1 h1:FXtiHYKDGKCW2KzwZKx0iC0PQmdlorYgdFG9jPXJ1Bc=
 github.com/emirpasic/gods v1.18.1/go.mod h1:8tpGGwCnJ5H4r6BWwaV6OrWmMoPhUl5jm/FMNAnJvWQ=
+github.com/eranturgeman/jfrog-cli-security v0.0.0-20250112092641-48f95de65f41 h1:U9La/5MHpQoSOlhs2cIUrFyoPP73QKQ7Wq7Fi5EuFpQ=
+github.com/eranturgeman/jfrog-cli-security v0.0.0-20250112092641-48f95de65f41/go.mod h1:OAVEccjAIDZJTuZ4DmawegJ/WnzFXf6xBFiWvnPlbPQ=
+github.com/eranturgeman/jfrog-client-go v0.0.0-20250112092141-9aa3d0a6016e h1:spRZuyinFDk2vjlmajTNvnhj827/wcJuXc7mquRQ8bQ=
+github.com/eranturgeman/jfrog-client-go v0.0.0-20250112092141-9aa3d0a6016e/go.mod h1:ohIfKpMBCQsE9kunrKQ1wvoExpqsPLaluRFO186B5EM=
 github.com/fatih/color v1.16.0 h1:zmkK9Ngbjj+K0yRhTVONQh1p/HknKYSlNT+vZCzyokM=
 github.com/fatih/color v1.16.0/go.mod h1:fL2Sau1YI5c0pdGEVCbKQbLXB6edEj1ZgiY4NijnWvE=
 github.com/forPelevin/gomoji v1.2.0 h1:9k4WVSSkE1ARO/BWywxgEUBvR/jMnao6EZzrql5nxJ8=
@@ -131,10 +135,6 @@ github.com/jfrog/jfrog-apps-config v1.0.1 h1:mtv6k7g8A8BVhlHGlSveapqf4mJfonwvXYL
 github.com/jfrog/jfrog-apps-config v1.0.1/go.mod h1:8AIIr1oY9JuH5dylz2S6f8Ym2MaadPLR6noCBO4C22w=
 github.com/jfrog/jfrog-cli-core/v2 v2.57.6 h1:kI5BqDW8Q4R5HkTUPSAObTqyIgQ9z7DqeFYGOEC1zPk=
 github.com/jfrog/jfrog-cli-core/v2 v2.57.6/go.mod h1:h5pzOZUb5ChGcGrXCYr3nPyXcTZjeGW2Rm1Zceo8Afg=
-github.com/jfrog/jfrog-cli-security v1.14.0 h1:mGm/ya0Qh0YdBS7ATgmQi1r8MEkbM8Hh/ml4UPkuu/4=
-github.com/jfrog/jfrog-cli-security v1.14.0/go.mod h1:KGfZVb4je4fiWm+OTNWdyi8V3c2TAkNDZHxsUUEM2GE=
-github.com/jfrog/jfrog-client-go v1.49.0 h1:NaTK6+LQBEJafL//6ntnS/eVx1dZMJnxydALwWHKORQ=
-github.com/jfrog/jfrog-client-go v1.49.0/go.mod h1:ohIfKpMBCQsE9kunrKQ1wvoExpqsPLaluRFO186B5EM=
 github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible h1:jdpOPRN1zP63Td1hDQbZW73xKmzDvZHzVdNYxhnTMDA=
 github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible/go.mod h1:1c7szIrayyPPB/987hsnvNzLushdWf4o/79s3P08L8A=
 github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88/go.mod h1:3w7q1U84EfirKl04SVQ/s7nPm1ZPhiXd34z40TNz36k=
