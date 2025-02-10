@@ -75,7 +75,7 @@ const (
 	AllowedLicensesEnv                 = "JF_ALLOWED_LICENSES"
 	SkipAutoInstallEnv                 = "JF_SKIP_AUTO_INSTALL"
 	AllowPartialResultsEnv             = "JF_ALLOW_PARTIAL_RESULTS"
-	WatchesDelimiter                   = ","
+	CommaDelimiter                     = ","
 
 	// Email related environment variables
 	//#nosec G101 -- False positive - no hardcoded credentials.
