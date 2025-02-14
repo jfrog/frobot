@@ -38,7 +38,7 @@
     "dependencies": {
         "@actions/core": "~1.10.0",
         "@actions/exec": "~1.1.1",
-        "@actions/github": "~5.1.1",
+        "@actions/github": "~6.0.0",
         "@actions/tool-cache": "~2.0.1",
         "simple-git": "^3.19.1",
         "@actions/http-client": "~2.2.1"
