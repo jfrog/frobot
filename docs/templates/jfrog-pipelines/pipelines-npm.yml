@@ -30,7 +30,7 @@ pipelines:
             image:
               auto:
                 language: node
-                version: "16"
+                version: "20"
           environmentVariables:
             # [Mandatory]
             # JFrog platform URL

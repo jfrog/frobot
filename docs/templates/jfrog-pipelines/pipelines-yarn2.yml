@@ -30,7 +30,7 @@ pipelines:
             image:
               auto:
                 language: node
-                version: "16"
+                version: "20"
           environmentVariables:
             # [Mandatory if the two conditions below are met]
             # 1. The project uses yarn 2, NuGet or .NET Core to download its dependencies
