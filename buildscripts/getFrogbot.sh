@@ -4,6 +4,7 @@ FROGBOT_OS="na"
 FILE_NAME="na"
 VERSION="[RELEASE]"
 PLATFORM_URL="https://releases.jfrog.io"
+REPOSITORY="frogbot"
 
 setFrogbotVersion() {
   if [ $# -eq 1 ]
@@ -19,19 +20,19 @@ setFrogbotRemoteRepositoryIfNeeded() {
   if [ -n "${JF_RELEASES_REPO}" ]
   then
     PLATFORM_URL="${JF_URL%%/}"
-    REMOTE_PATH="$JF_RELEASES_REPO/artifactory/"
+    REPOSITORY="$JF_RELEASES_REPO"
   fi
 }
 
 setWindowsProperties() {
   FROGBOT_OS="windows"
-  URL="${PLATFORM_URL}/artifactory/${REMOTE_PATH}frogbot/v2/${VERSION}/frogbot-windows-amd64/frogbot.exe"
+  URL="${PLATFORM_URL}/artifactory/${REPOSITORY}/v2/${VERSION}/frogbot-windows-amd64/frogbot.exe"
   FILE_NAME="frogbot.exe"
 }
 
 setMacProperties() {
   FROGBOT_OS="mac"
-  URL="${PLATFORM_URL}/artifactory/${REMOTE_PATH}frogbot/v2/${VERSION}/frogbot-mac-386/frogbot"
+  URL="${PLATFORM_URL}/artifactory/${REPOSITORY}/v2/${VERSION}/frogbot-mac-386/frogbot"
   FILE_NAME="frogbot"
 }
 
@@ -65,7 +66,7 @@ setLinuxProperties() {
           exit 1
           ;;
   esac
-  URL="${PLATFORM_URL}/artifactory/${REMOTE_PATH}frogbot/v2/${VERSION}/frogbot-${FROGBOT_OS}-${ARCH}/frogbot"
+  URL="${PLATFORM_URL}/artifactory/${REPOSITORY}/v2/${VERSION}/frogbot-${FROGBOT_OS}-${ARCH}/frogbot"
   FILE_NAME="frogbot"
 }
 
@@ -88,7 +89,7 @@ echoGreetings() {
 }
 
 getDownloadCommand() {
-  if [ -n "${REMOTE_PATH}" ]; then
+  if [ -n "${JF_RELEASES_REPO}" ]; then
       if [ -n "${JF_ACCESS_TOKEN}" ]; then
         curl -fLg -H "Authorization:Bearer ${JF_ACCESS_TOKEN}" -X GET "${URL}" -o "${FILE_NAME}"
       else
