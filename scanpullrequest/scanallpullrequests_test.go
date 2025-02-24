@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+
+
 var (
 	gitParams = &utils.Repository{
 		OutputWriter: &outputwriter.SimplifiedOutput{},
